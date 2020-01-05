@@ -29,8 +29,8 @@ namespace DeliveryService
         public override void Entry(IModHelper helper)
         {
             this.Config = this.Helper.ReadConfig<ModConfig>();
-            //helper.Events.GameLoop.DayEnding += this.OnDayEnding;
-            helper.Events.Input.ButtonPressed += this.OnButtonPressed;
+            helper.Events.GameLoop.DayEnding += this.OnDayEnding;
+            //helper.Events.Input.ButtonPressed += this.OnButtonPressed;
         }
 
 
