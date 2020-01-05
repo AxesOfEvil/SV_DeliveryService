@@ -1,0 +1,10 @@
+﻿{
+  "Name": "DeliveryService",
+  "Author": "AxesOfEvil",
+  "Version": "0.8.0",
+  "Description": "Move items between chests nightly",
+  "UniqueID": "AxesOfEvil.DeliveryService",
+  "EntryDll": "DeliveryService.dll",
+  "MinimumApiVersion": "2.10.0",
+  "UpdateKeys": []
+}
