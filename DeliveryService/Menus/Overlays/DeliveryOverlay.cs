@@ -52,6 +52,8 @@ namespace DeliveryService.Menus.Overlays
         /// <summary>The top-right button which closes the edit form.</summary>
         private ClickableTextureComponent EditExitButton;
         private Checkbox MatchColor;
+        private Checkbox PickupAll = new Checkbox();
+        private Checkbox DropoffAll = new Checkbox();
         private Rectangle bounds;
         private string ModID;
         private long HostID;
@@ -114,7 +116,10 @@ namespace DeliveryService.Menus.Overlays
                 this.DrawAndPositionCheckbox(batch, font, this.MatchColor, bounds.X + padding, bounds.Y + padding, "Only deliver to chests of same color");
 
                 batch.DrawString(font, "Pickup", new Vector2(bounds.X + padding, bounds.Y + (int)topOffset), Color.Black);
+                this.DrawAndPositionCheckbox(batch, font, PickupAll, bounds.X + padding + (int)font.MeasureString("Pickup").X + 10, bounds.Y + (int)topOffset, "All");
+
                 batch.DrawString(font, "Drop-off", new Vector2(bounds.X + padding2, bounds.Y + (int)topOffset), Color.Black);
+                this.DrawAndPositionCheckbox(batch, font, DropoffAll, bounds.X + padding2 + (int)font.MeasureString("Drop-off").X + 10, bounds.Y + (int)topOffset, "All");
                 topOffset += LabelHeight;
                 for (int i = 0; i < numRows; i++)
                 {
@@ -240,6 +245,23 @@ namespace DeliveryService.Menus.Overlays
                 else if (this.MatchColor.GetBounds().Contains(x,y))
                 {
                     this.MatchColor.Toggle();
+                }
+                else if (this.PickupAll.GetBounds().Contains(x, y) || this.DropoffAll.GetBounds().Contains(x, y)) {
+                    bool pickup = this.PickupAll.GetBounds().Contains(x, y);
+                    List<Category> primary = pickup ? this.SendCategories : this.ReceiveCategories;
+                    List<Category> secondary = pickup ? this.ReceiveCategories : this.SendCategories;
+                    bool all = primary.All(i => i.Checkbox.Value);
+                    for (int i = 0; i < this.SendCategories.Count; i++)
+                    {
+                        if (! all)
+                        {
+                            primary[i].Checkbox.Value = true;
+                            secondary[i].Checkbox.Value = false;
+                        } else
+                        {
+                            primary[i].Checkbox.Value = false;
+                        }
+                    }
                 }
                 for (int i = 0; i < this.SendCategories.Count; i++)
                 {

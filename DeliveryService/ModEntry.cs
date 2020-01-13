@@ -46,6 +46,7 @@ namespace DeliveryService
             helper.Events.GameLoop.SaveLoaded += this.Load;
             helper.Events.Multiplayer.ModMessageReceived += this.OnModMessageReceived;
             helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
+            helper.ConsoleCommands.Add("player_classify_inventory", "List classification for each item in player's inventory.\n\nUsage: player_classify_inventory", this.ClassifyInventory);
         }
         private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
         {
@@ -308,6 +309,26 @@ namespace DeliveryService
                 }
             }
             return null;
+        }
+        private void ClassifyInventory(string command, string[] args)
+        {
+            foreach (Item item in Game1.player.Items)
+            {
+                if (item == null)
+                    continue;
+                string item_category = item.getCategoryName();
+                string item_type = "None";
+                string item_classification = item.getDeliveryCategory().Name();
+                if (item_category == "")
+                {
+                    item_category = "None";
+                }
+                if (item is SObject obj)
+                {
+                    item_type = obj.Type;
+                }
+                Monitor.Log($"{item.Name}:  Category: {item_category}  Type: {item_type}  Classification: {item_classification}", LogLevel.Info);
+            }
         }
         private bool DeliveryEnabled()
         {

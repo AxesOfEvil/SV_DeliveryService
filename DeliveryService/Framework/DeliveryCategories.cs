@@ -15,6 +15,7 @@ namespace DeliveryService.Framework
         Artisan_Goods,
         Cooking,
         Crafting,
+        Equipment,
         Fish,
         Flower,
         Forage,
@@ -24,7 +25,6 @@ namespace DeliveryService.Framework
         Resource,
         Seed,
         Vegetable,
-        Tool,
         Trash,
         Misc
     }
@@ -40,6 +40,7 @@ namespace DeliveryService.Framework
         public static DeliveryCategories getDeliveryCategory(this Item item)
         {
             SObject obj = null;
+            string item_category = item.getCategoryName();
             if (item is SObject sobj)
             {
                 obj = sobj;
@@ -61,13 +62,22 @@ namespace DeliveryService.Framework
                     case DeliveryCategories.Resource:
                     case DeliveryCategories.Seed:
                     case DeliveryCategories.Vegetable:
-                    case DeliveryCategories.Tool:
                     case DeliveryCategories.Trash:
-                        if (item.getCategoryName() == cat.Name())
+                        if (item_category == cat.Name())
                             return cat;
                         break;
                     case DeliveryCategories.Crafting:
                         if (obj != null && obj.Type == cat.Name())
+                            return cat;
+                        break;
+                    case DeliveryCategories.Equipment:
+                        if (item_category == "Tool"
+                            || item_category == "Clothes"
+                            || item_category == "Ring"
+                            || item is StardewValley.Tools.MeleeWeapon
+                            || item is StardewValley.Objects.Hat
+                            || item is StardewValley.Objects.Boots
+                            )
                             return cat;
                         break;
                 }
