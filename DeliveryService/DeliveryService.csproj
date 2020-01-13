@@ -43,8 +43,22 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Framework\BaseDataModel.cs" />
+    <Compile Include="Framework\DeliveryCategories.cs" />
+    <Compile Include="Framework\DeliveryOptions.cs" />
+    <Compile Include="Framework\LocationHelper.cs" />
+    <Compile Include="Framework\SaveDataModel.cs" />
+    <Compile Include="Framework\SyncDataModel.cs" />
+    <Compile Include="Framework\WizardMail.cs" />
+    <Compile Include="Pathoschild\ItemType.cs" />
+    <Compile Include="Pathoschild\UI\CommonSprites.cs" />
+    <Compile Include="Pathoschild\CommonHelper.cs" />
+    <Compile Include="Pathoschild\UI\BaseOverlay.cs" />
     <Compile Include="Framework\DeliveryChest.cs" />
     <Compile Include="Framework\DeliverySign.cs" />
+    <Compile Include="Menus\Components\Checkbox.cs" />
+    <Compile Include="Menus\Components\Sprites.cs" />
+    <Compile Include="Menus\Overlays\DeliveryOverlay.cs" />
     <Compile Include="ModConfig.cs" />
     <Compile Include="ModEntry.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -53,6 +67,7 @@
     <None Include="manifest.json" />
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\Pathoschild.Stardew.ModBuildConfig.3.0.0\build\Pathoschild.Stardew.ModBuildConfig.targets" Condition="Exists('..\packages\Pathoschild.Stardew.ModBuildConfig.3.0.0\build\Pathoschild.Stardew.ModBuildConfig.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
