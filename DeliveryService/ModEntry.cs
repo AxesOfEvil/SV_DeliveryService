@@ -198,6 +198,10 @@ namespace DeliveryService
         }
         private void Save(object sender, SavingEventArgs e)
         {
+            if (DeliveryEnabled() && Config.WaitForWizardShop)
+            {
+                Game1.addMailForTomorrow("DeliveryServiceWizardMail");
+            }
             if (!Context.IsMainPlayer)
                 return;
             List<SaveDataModel> save = new List<SaveDataModel>();
@@ -216,7 +220,7 @@ namespace DeliveryService
             CurrentOverlay = null;
             DeliveryChests = new Dictionary<Chest, DeliveryChest>();
             HostID = 0;
-            if (DeliveryEnabled())
+            if (DeliveryEnabled() && Config.WaitForWizardShop)
             {
                 Game1.addMailForTomorrow("DeliveryServiceWizardMail");
             }
