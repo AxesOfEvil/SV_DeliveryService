@@ -119,6 +119,7 @@ namespace DeliveryService
         }
         private void OnModMessageReceived(object sender, ModMessageReceivedEventArgs e)
         {
+            //Monitor.Log($"Got message: {e.Type}", LogLevel.Debug);
             if (e.FromModID != this.ModManifest.UniqueID)
                 return;
             if (e.Type == "UpdateDeliveryOptions")
@@ -127,6 +128,7 @@ namespace DeliveryService
                 DeliveryChest dchest = GetDeliveryChestFromMessage(message);
                 if (dchest != null)
                 {
+                    //Monitor.Log($"Send:{string.Join(", ", message.DeliveryOptions.Send)}", LogLevel.Debug);
                     dchest.DeliveryOptions.Set(message.DeliveryOptions);
                     if (this.CurrentOverlay != null)
                         this.CurrentOverlay.ResetEdit();
