@@ -173,10 +173,11 @@ namespace DeliveryService
             }
             foreach (DeliveryChest fromChest in fromChests)
             {
+                bool match_color = fromChest.DeliveryOptions.MatchColor;
                 foreach (DeliveryChest toChest in toChests)
                 {
                     List<DeliveryCategories> categories = new List<DeliveryCategories>();
-                    if (fromChest == toChest)
+                    if (fromChest == toChest || (match_color && fromChest.Chest.playerChoiceColor != toChest.Chest.playerChoiceColor))
                     {
                         continue;
                     }
