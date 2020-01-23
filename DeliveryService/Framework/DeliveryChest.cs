@@ -15,28 +15,26 @@ namespace DeliveryService.Framework
 {public class DeliveryChest
     {
         /// <summary>The location or building which contains the chest.</summary>
-        public GameLocation Location { get; }
-        public Vector2 TileLocation { get; }
+        public ObjectLocation Location { get; }
         public DeliveryOptions DeliveryOptions { get; }
 
         /// <summary>The chest's tile position within its location or building.</summary>
         public Chest Chest { get; }
 
-        public DeliveryChest(Chest chest, GameLocation location)
+        public DeliveryChest(Chest chest, ObjectLocation location)
         {
             this.Chest = chest;
             this.Location = location;
-            this.TileLocation = chest.tileLocation;
             this.DeliveryOptions = new DeliveryOptions();
         }
         public DeliveryChest(Chest chest) : this(chest, LocationHelper.FindLocation(chest)) { }
         public bool Exists()
         {
-            return (Chest != null && Location != null && LocationHelper.FindAtLocation(Location, Chest));
+            return (Chest != null && Location != null && LocationHelper.FindAtLocation(Location.Location, Chest));
         }
         public bool IsFridge()
         {
-            return (this.Location is FarmHouse house && Game1.player.HouseUpgradeLevel > 0 && house.fridge.Value == this.Chest);
+            return (this.Location.Location is FarmHouse house && Game1.player.HouseUpgradeLevel > 0 && house.fridge.Value == this.Chest);
         }
     }
 }

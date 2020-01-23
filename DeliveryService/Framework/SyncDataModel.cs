@@ -7,7 +7,7 @@ using Microsoft.Xna.Framework;
 
 namespace DeliveryService.Framework
 {
-    public class SyncDataModel : BaseDataModel
+    public class SyncDataModel : SerializableChestLocation
     {
         public DeliveryOptions DeliveryOptions;
         public SyncDataModel() { }

@@ -86,7 +86,7 @@ namespace DeliveryService.Menus.Overlays
             //this.bounds = new Rectangle(this.Menu.xPositionOnScreen, this.Menu.yPositionOnScreen, this.Menu.width, this.Menu.Height);
             this.bounds = new Rectangle(10, 10, Game1.viewport.Width - 20, Game1.viewport.Height - 20);
             if (! Context.IsMainPlayer)
-                this.Multiplayer.SendMessage(new BaseDataModel(chest), "RequestDeliveryOptions", modIDs: new[] { this.ModID }, playerIDs: new[] { this.HostID });
+                this.Multiplayer.SendMessage(new SerializableChestLocation(chest), "RequestDeliveryOptions", modIDs: new[] { this.ModID }, playerIDs: new[] { this.HostID });
         }
         protected override void Draw(SpriteBatch batch)
         {
@@ -184,7 +184,7 @@ namespace DeliveryService.Menus.Overlays
                 send[i] = this.SendCategories[i].Checkbox.Value;
                 receive[i] = this.ReceiveCategories[i].Checkbox.Value;
             }
-            Monitor.Log($"Saving Categories {this.Chest.Location}@{this.Chest.TileLocation} Send:{string.Join(", ", send)}, Receive:{string.Join(", ", receive)}", LogLevel.Trace);
+            Monitor.Log($"Saving Categories {this.Chest.Location} Send:{string.Join(", ", send)}, Receive:{string.Join(", ", receive)}", LogLevel.Trace);
             this.Chest.DeliveryOptions.Set(send, receive, MatchColor.Value);
             SyncDataModel sync = new SyncDataModel(this.Chest);
             this.Multiplayer.SendMessage(sync, "UpdateDeliveryOptions", modIDs: new[] { this.ModID }); //, playerIDs: new[] { this.HostID });

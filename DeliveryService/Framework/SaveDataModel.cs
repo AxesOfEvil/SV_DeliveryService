@@ -7,7 +7,7 @@ using Microsoft.Xna.Framework;
 
 namespace DeliveryService.Framework
 {
-    public class SaveDataModel : BaseDataModel
+    public class SaveDataModel : SerializableChestLocation
     {
         public List<string> Send = new List<string>();
         public List<string> Receive = new List<string>();

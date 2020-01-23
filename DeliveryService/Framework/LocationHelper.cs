@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.Xna.Framework;
 using Pathoschild.Stardew.Common;
 using StardewModdingAPI;
 using StardewValley;
@@ -27,7 +28,7 @@ namespace DeliveryService.Framework
                 return true;
             return false;
         }
-        static public GameLocation FindLocation(SObject obj)
+        static public ObjectLocation FindLocation(SObject obj)
         {
             foreach (GameLocation location in GetAccessibleLocations())
             {
@@ -35,11 +36,22 @@ namespace DeliveryService.Framework
                 {
                     SObject fridge = house.fridge.Value;
                     if (fridge == obj)
-                        return location;
+                        return new ObjectLocation(location, obj.TileLocation);
+                }
+                if (obj.TileLocation.X == 0 && obj.TileLocation.Y == 0)
+                {
+                    //Item has no tile, do it the hard way
+                    foreach (KeyValuePair <Vector2, SObject > pair in location.Objects.Pairs)
+                    {
+                        if (pair.Value == obj)
+                        {
+                            return new ObjectLocation(location, pair.Key);
+                        }
+                    }
                 }
                 Item item = location.getObjectAtTile((int)obj.TileLocation.X, (int)obj.TileLocation.Y);
                 if (item != null && item is SObject tmpobj && tmpobj == obj)
-                    return location;
+                    return new ObjectLocation(location, obj.TileLocation);
             }
             return null;
         }

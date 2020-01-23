@@ -38,7 +38,7 @@ namespace DeliveryService
         public override void Entry(IModHelper helper)
         {
             this.Config = this.Helper.ReadConfig<ModConfig>();
-            //helper.Events.GameLoop.DayEnding += this.OnDayEnding;
+            helper.Events.GameLoop.DayEnding += this.OnDayEnding;
             helper.Events.Input.ButtonPressed += this.OnButtonPressed;
             //helper.Events.GameLoop.UpdateTicked += this.OnUpdateTicked;
             helper.Events.Display.MenuChanged += this.OnMenuChanged;
@@ -71,10 +71,15 @@ namespace DeliveryService
                 if (!this.DeliveryChests.TryGetValue(container, out chest))
                 {
                     chest = new DeliveryChest(container);
+                    if (chest.Location == null)
+                    {
+                        Monitor.Log($"Failed to find chest location.  Can't deliver to chest {container.Name}", LogLevel.Debug);
+                        return;
+                    }
                     DeliveryChests[container] = chest;
-                    Monitor.Log($"Creating DeliveryChest {chest.Location}@{chest.TileLocation}", LogLevel.Trace);
+                    Monitor.Log($"Creating DeliveryChest {chest.Location}", LogLevel.Debug);
                 }
-                this.Monitor.Log($"Applying DeliveryOverlay to {chest.Location}@{chest.TileLocation}", LogLevel.Trace);
+                this.Monitor.Log($"Applying DeliveryOverlay to {chest.Location}", LogLevel.Trace);
                 this.Monitor.Log($"Send: {string.Join(", ", chest.DeliveryOptions.Send)} Receive: {string.Join(", ", chest.DeliveryOptions.Receive)}", LogLevel.Trace);
                 this.CurrentOverlay = new DeliveryOverlay(this.Monitor, igm, chest, this.Helper, this.ModManifest.UniqueID, this.HostID);
             }
@@ -94,7 +99,7 @@ namespace DeliveryService
                 Monitor.Log("Delivery is not yet enabled", LogLevel.Info);
                 return;
             }
-            //this.Monitor.Log($"{Game1.player.Name} game-day ended {e}.", LogLevel.Trace);
+            //this.Monitor.Log($"{Game1.player.Name} game-day ended {e}.", LogLevel.Debug);
             this.DoDelivery();
         }
         /// <summary>Raised after the player presses a button on the keyboard, controller, or mouse.</summary>
@@ -105,14 +110,14 @@ namespace DeliveryService
             // ignore if player hasn't loaded a save yet
             if (!Context.IsWorldReady || !Context.IsMainPlayer)
                 return;
-            if (!DeliveryEnabled())
-            {
-                Monitor.Log("Delivery is not yet enabled", LogLevel.Info);
-                return;
-            }
             // print button presses to the console window
             if (e.Button == Config.DeliverKey)
             {
+                if (!DeliveryEnabled())
+                {
+                    Monitor.Log("Delivery is not yet enabled", LogLevel.Info);
+                    return;
+                }
                 this.Monitor.Log($"--{Game1.player.Name} pressed {e.Button}.", LogLevel.Debug);
                 this.DoDelivery();
             }
@@ -136,7 +141,7 @@ namespace DeliveryService
             }
             else if (e.Type == "RequestDeliveryOptions")
             {
-                BaseDataModel message = e.ReadAs<BaseDataModel>();
+                SerializableChestLocation message = e.ReadAs<SerializableChestLocation>();
                 DeliveryChest dchest = GetDeliveryChestFromMessage(message);
                 if (dchest != null)
                 {
@@ -158,7 +163,7 @@ namespace DeliveryService
                 Monitor.Log($"chest:{chest} container:{container}, Chest:{chest.Chest} location:{chest.Location}", LogLevel.Trace);
                 if (chest == null || !chest.Exists())
                 {
-                    this.Monitor.Log($"Chest {chest.Location}@{chest.TileLocation} no longer exists", LogLevel.Trace);
+                    this.Monitor.Log($"Chest {chest.Location} no longer exists", LogLevel.Trace);
                     DeliveryChests.Remove(container);
                     continue;
                 }
@@ -192,10 +197,10 @@ namespace DeliveryService
                     {
                         continue;
                     }
-                    this.Monitor.Log($"Moving {string.Join(", ", categories)} items from {fromChest.Location}@{fromChest.TileLocation} -> {toChest.Location}@{toChest.TileLocation}", LogLevel.Trace);
+                    this.Monitor.Log($"Moving {string.Join(", ", categories)} items from {fromChest.Location} -> {toChest.Location}", LogLevel.Trace);
                     MoveItems(
-                        from: fromChest.Chest,
-                        to: toChest.Chest,
+                        from: fromChest,
+                        to: toChest,
                         filter: categories.ToArray());
                 }
             }
@@ -262,10 +267,10 @@ namespace DeliveryService
                 }
             }
         }
-        private void MoveItems(Chest from, Chest to, DeliveryCategories[] filter)
+        private void MoveItems(DeliveryChest from, DeliveryChest to, DeliveryCategories[] filter)
         {
             // Store items because removing items aborts foreach()
-            Item[] items = from.items.ToArray();
+            Item[] items = from.Chest.items.ToArray();
             foreach (Item item in items)
             {
                 string type = "";
@@ -279,12 +284,17 @@ namespace DeliveryService
                 {
                     continue;
                 }
-                to.addItem(item);
+                Item chest_full = to.Chest.addItem(item);
+                if (chest_full != null)
+                {
+                    this.Monitor.Log($"Item {item.Name} will not fit in chest at {to.Location}", LogLevel.Info);
+                    continue;
+                }
                 //this.Monitor.Log($"Removing item", LogLevel.Trace);
-                from.items.Remove(item);
+                from.Chest.items.Remove(item);
             }
         }
-        private DeliveryChest GetDeliveryChestFromMessage(BaseDataModel message)
+        private DeliveryChest GetDeliveryChestFromMessage(SerializableChestLocation message)
         {
             foreach (GameLocation location in LocationHelper.GetAccessibleLocations())
             {
