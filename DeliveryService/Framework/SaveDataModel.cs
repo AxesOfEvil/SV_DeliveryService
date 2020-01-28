@@ -18,10 +18,10 @@ namespace DeliveryService.Framework
             MatchColor = chest.DeliveryOptions.MatchColor;
             foreach (DeliveryCategories cat in Enum.GetValues(typeof(DeliveryCategories)))
             {
-                if (chest.DeliveryOptions.Send[(int)cat])
-                    Send.Add(cat.ToString());
-                if (chest.DeliveryOptions.Receive[(int)cat])
-                    Receive.Add(cat.ToString());
+                if (chest.DeliveryOptions.Send[(int)cat] > 0)
+                    Send.Add(cat.ToString() + ":" + chest.DeliveryOptions.Send[(int)cat].ToString());
+                if (chest.DeliveryOptions.Receive[(int)cat] > 0)
+                    Receive.Add(cat.ToString() + ":" + chest.DeliveryOptions.Receive[(int)cat].ToString());
             }
         }
     }

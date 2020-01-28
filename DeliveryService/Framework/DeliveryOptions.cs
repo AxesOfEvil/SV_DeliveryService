@@ -8,11 +8,11 @@ namespace DeliveryService.Framework
 {
     public class DeliveryOptions
     {
-        public bool[] Send = new bool[Enum.GetValues(typeof(DeliveryCategories)).Length];
-        public bool[] Receive = new bool[Enum.GetValues(typeof(DeliveryCategories)).Length];
+        public int[] Send = new int[Enum.GetValues(typeof(DeliveryCategories)).Length];
+        public int[] Receive = new int[Enum.GetValues(typeof(DeliveryCategories)).Length];
         public bool MatchColor = false;
         public DeliveryOptions() { }
-        public void Set(bool[]send, bool[] receive, bool match)
+        public void Set(int[]send, int[] receive, bool match)
         {
             MatchColor = match;
             for(int i = 0; i < Send.Length; i++)

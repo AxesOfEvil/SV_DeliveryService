@@ -73,11 +73,11 @@ namespace DeliveryService
                     chest = new DeliveryChest(container);
                     if (chest.Location == null)
                     {
-                        Monitor.Log($"Failed to find chest location.  Can't deliver to chest {container.Name}", LogLevel.Debug);
+                        Monitor.Log($"Failed to find chest location.  Can't deliver to chest {container.Name}", LogLevel.Warn);
                         return;
                     }
                     DeliveryChests[container] = chest;
-                    Monitor.Log($"Creating DeliveryChest {chest.Location}", LogLevel.Debug);
+                    Monitor.Log($"Creating DeliveryChest {chest.Location}", LogLevel.Trace);
                 }
                 this.Monitor.Log($"Applying DeliveryOverlay to {chest.Location}", LogLevel.Trace);
                 this.Monitor.Log($"Send: {string.Join(", ", chest.DeliveryOptions.Send)} Receive: {string.Join(", ", chest.DeliveryOptions.Receive)}", LogLevel.Trace);
@@ -118,7 +118,7 @@ namespace DeliveryService
                     Monitor.Log("Delivery is not yet enabled", LogLevel.Info);
                     return;
                 }
-                this.Monitor.Log($"--{Game1.player.Name} pressed {e.Button}.", LogLevel.Debug);
+                this.Monitor.Log($"--{Game1.player.Name} pressed {e.Button}.", LogLevel.Trace);
                 this.DoDelivery();
             }
         }
@@ -167,11 +167,11 @@ namespace DeliveryService
                     DeliveryChests.Remove(container);
                     continue;
                 }
-                if (chest.DeliveryOptions.Send.Contains(true))
+                if (chest.DeliveryOptions.Send.Any(x => x > 0))
                 {
                     fromChests.Add(chest);
                 }
-                if (chest.DeliveryOptions.Receive.Contains(true))
+                if (chest.DeliveryOptions.Receive.Any(x => x > 0))
                 {
                     toChests.Add(chest);
                 }
@@ -181,16 +181,18 @@ namespace DeliveryService
                 bool match_color = fromChest.DeliveryOptions.MatchColor;
                 foreach (DeliveryChest toChest in toChests)
                 {
-                    List<DeliveryCategories> categories = new List<DeliveryCategories>();
+                    List<Tuple<DeliveryCategories, int>> categories = new List<Tuple<DeliveryCategories, int>>();
                     if (fromChest == toChest || (match_color && fromChest.Chest.playerChoiceColor != toChest.Chest.playerChoiceColor))
                     {
                         continue;
                     }
                     foreach (DeliveryCategories category in Enum.GetValues(typeof(DeliveryCategories)))
                     {
-                        if (fromChest.DeliveryOptions.Send[(int)category] && toChest.DeliveryOptions.Receive[(int)category])
+                        int mask = (fromChest.DeliveryOptions.Send[(int)category] & toChest.DeliveryOptions.Receive[(int)category]);
+                        if ( mask > 0)
                         {
-                            categories.Add(category);
+                            // There is overlap between these chests
+                            categories.Add(new Tuple<DeliveryCategories, int>(category, mask));
                         }
                     }
                     if (categories.Count == 0 || (fromChest.DeliveryOptions.MatchColor && fromChest.Chest.playerChoiceColor != toChest.Chest.playerChoiceColor))
@@ -254,36 +256,47 @@ namespace DeliveryService
             {
                 DeliveryChest dchest = GetDeliveryChestFromMessage(data);
                 if (dchest != null) {
-                    bool[] send = new bool[Enum.GetValues(typeof(DeliveryCategories)).Length];
-                    bool[] receive = new bool[Enum.GetValues(typeof(DeliveryCategories)).Length];
+                    int[] send = new int[Enum.GetValues(typeof(DeliveryCategories)).Length];
+                    int[] receive = new int[Enum.GetValues(typeof(DeliveryCategories)).Length];
                     foreach (DeliveryCategories cat in Enum.GetValues(typeof(DeliveryCategories)))
                     {
-                        if (data.Send.Contains(cat.ToString()))
-                            send[(int)cat] = true;
-                        if (data.Receive.Contains(cat.ToString()))
-                            receive[(int)cat] = true;
+                        send[(int)cat] = CheckCategoryEnabledInSave(cat, data.Send);
+                        receive[(int)cat] = CheckCategoryEnabledInSave(cat, data.Receive);
                     }
                     dchest.DeliveryOptions.Set(send, receive, data.MatchColor);
                 }
             }
         }
-        private void MoveItems(DeliveryChest from, DeliveryChest to, DeliveryCategories[] filter)
+        private int CheckCategoryEnabledInSave(DeliveryCategories cat, List<string> match)
+        {
+            foreach (string item in match)
+            {
+                string[] items = item.Split(':');
+                if (items[0] == cat.ToString())
+                {
+                    //Quality level 3 (==8) is unused
+                    return items.Length > 1 ? Int32.Parse(items[1]) : (16 + 4 + 2 + 1);
+                }
+            }
+            return 0;
+        }
+        private void MoveItems(DeliveryChest from, DeliveryChest to, Tuple<DeliveryCategories, int>[] filter)
         {
             // Store items because removing items aborts foreach()
             Item[] items = from.Chest.items.ToArray();
             foreach (Item item in items)
             {
                 string type = "";
+                int quality = 1;
                 if (item is SObject obj)
                 {
                     type = obj.Type;
+                    quality = 1 << obj.Quality;
                 }
                 DeliveryCategories cat = item.getDeliveryCategory();
                 this.Monitor.Log($"Found existing item {item.Name} Type: {type} Category: {item.getCategoryName()} cat: {cat.Name()}", LogLevel.Trace);
-                if (!filter.Contains(cat))
-                {
+                if (!filter.Any(x => x.Item1 == cat && (x.Item2 & quality) > 0))
                     continue;
-                }
                 Item chest_full = to.Chest.addItem(item);
                 if (chest_full != null)
                 {

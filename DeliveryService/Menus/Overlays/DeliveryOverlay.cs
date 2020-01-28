@@ -22,25 +22,35 @@ namespace DeliveryService.Menus.Overlays
         internal DeliveryCategories Type;
         internal Checkbox[] Checkbox { get; }
         internal Rectangle selectAll;
-        internal Category(DeliveryCategories type, bool value=false) {
+        internal Category(DeliveryCategories type, int value=0) {
             this.Type = type;
             this.selectAll = new Rectangle(0, 0, 24, 24);
-            this.Checkbox = new Checkbox[4];
-            for (int i = 0; i < this.Checkbox.Length; i++)
-            {
+            int checkbox_count = Enum.GetNames(typeof(ItemQuality)).Length;
+            this.Checkbox = new Checkbox[checkbox_count];
+            for (int i = 0; i < checkbox_count; i++)
                 this.Checkbox[i] = new Checkbox();
-                this.Checkbox[i].Value = value;
-            }
+            this.SetValue(value);
         }
-        internal bool Any()
+        internal void SetValue(int value)
         {
-            return this.Checkbox.Any(i => i.Value);
+            int[] qualities = (int[])Enum.GetValues(typeof(ItemQuality));
+            for (int idx = 0; idx < qualities.Length; idx++)
+                this.Checkbox[idx].Value = (value & 1 << qualities[idx]) > 0;
+        }
+        internal int GetValue()
+        {
+            int value = 0;
+            int[] qualities = (int[])Enum.GetValues(typeof(ItemQuality));
+            for (int idx = 0; idx < qualities.Length; idx++)
+                if (this.Checkbox[idx].Value)
+                    value |= 1 << qualities[idx];
+            return value;
         }
         internal string Name()
         {
             return this.Type.Name();
         }
-        static public List<Category>CategoryList(bool[]values)
+        static public List<Category>CategoryList(int[]values)
         {
             List<Category> categories = new List<Category>();
             foreach (DeliveryCategories type in Enum.GetValues(typeof(DeliveryCategories)))
@@ -67,10 +77,13 @@ namespace DeliveryService.Menus.Overlays
         private Checkbox MatchColor;
         private Checkbox PickupAll = new Checkbox();
         private Checkbox DropoffAll = new Checkbox();
-        private Rectangle AllArrow = new Rectangle(365, 494, 12, 12);
+        private Rectangle AllArrowSprite = new Rectangle(365, 494, 12, 12);
+        private Rectangle StarSprite = new Rectangle(202, 374, 8, 8);
         private Rectangle bounds;
         private string ModID;
         private long HostID;
+        private InventoryMenu.highlightThisItem origInventoryHighlighter;
+        private InventoryMenu.highlightThisItem origChestHighlighter;
         bool isDrawn;
         bool isEditing = false;
         bool hasDelivery;
@@ -97,13 +110,22 @@ namespace DeliveryService.Menus.Overlays
             this.Multiplayer = helper.Multiplayer;
             this.ModID = modid;
             this.HostID = hostid;
+            this.origInventoryHighlighter = this.Menu.inventory.highlightMethod;
+            this.origChestHighlighter = this.Menu.ItemsToGrabMenu.highlightMethod;
+
             this.EditSaveButtonArea = new ClickableComponent(new Rectangle(0, 0, Game1.tileSize, Game1.tileSize), "save-delivery");
             this.SendCategories = Category.CategoryList(chest.DeliveryOptions.Send);
             this.ReceiveCategories = Category.CategoryList(chest.DeliveryOptions.Receive);
             this.MatchColor = new Checkbox(chest.DeliveryOptions.MatchColor);
             //this.bounds = new Rectangle(this.Menu.xPositionOnScreen, this.Menu.yPositionOnScreen, this.Menu.width, this.Menu.Height);
-            this.bounds = new Rectangle(10, 10, Game1.viewport.Width - 20, Game1.viewport.Height - 20);
             this.LabelHeight = (int)Game1.smallFont.MeasureString("ABC").Y + 2;
+            this.maxLabelWidth = 24 + 10 + (int)this.SendCategories.Select(p => Game1.smallFont.MeasureString(p.Name()).X).Max();
+            int width =
+                100 + // border
+                this.maxLabelWidth + // label
+                40 + 10 * 26 + // checkbox
+                11 * Game1.pixelZoom; //scrollbar
+            this.bounds = new Rectangle((Game1.viewport.Width - width) / 2, 10, width, Game1.viewport.Height - 20);
 
             this.scrollbar = new ScrollBar(helper.Events, helper.Input,
                 new Rectangle(
@@ -174,8 +196,8 @@ namespace DeliveryService.Menus.Overlays
                 send.selectAll.X = bounds.X + padding + maxLabelWidth + 20;
                 receive.selectAll.X = send.selectAll.X + 20 + 5 * checkbox_width;
                 receive.selectAll.Y = send.selectAll.Y = bounds.Y + (int)topOffset;
-                batch.Draw(Sprites.Icons.Sheet, new Vector2(send.selectAll.X, send.selectAll.Y), AllArrow, Color.White, 0, Vector2.Zero, (float)send.selectAll.Width / AllArrow.Width, SpriteEffects.None, 1f);
-                batch.Draw(Sprites.Icons.Sheet, new Vector2(receive.selectAll.X, receive.selectAll.Y), AllArrow, Color.White, 0, Vector2.Zero, (float)receive.selectAll.Width / AllArrow.Width, SpriteEffects.None, 1f);
+                batch.Draw(Sprites.Icons.Sheet, new Vector2(send.selectAll.X, send.selectAll.Y), AllArrowSprite, Color.White, 0, Vector2.Zero, (float)send.selectAll.Width / AllArrowSprite.Width, SpriteEffects.None, 1f);
+                batch.Draw(Sprites.Icons.Sheet, new Vector2(receive.selectAll.X, receive.selectAll.Y), AllArrowSprite, Color.White, 0, Vector2.Zero, (float)receive.selectAll.Width / AllArrowSprite.Width, SpriteEffects.None, 1f);
                 for (int j = 0; j < 4; j++)
                 {
                     this.DrawAndPositionCheckbox(batch, send.Checkbox[j], bounds.X + padding + maxLabelWidth + 20 + (1+ j) * checkbox_width, bounds.Y + (int)topOffset);
@@ -221,18 +243,24 @@ namespace DeliveryService.Menus.Overlays
             int checkbox_width = 26;
 
             Rectangle buttonBounds = new Rectangle(this.Menu.xPositionOnScreen + leftOffset + this.Menu.width - (int)(sprite.Width * zoom), this.Menu.yPositionOnScreen + topOffset, (int)(sprite.Width * zoom), (int)(sprite.Height * zoom));
-            this.EditButton = new ClickableTextureComponent("edit-delivery", buttonBounds, "junimo", "junimo", Sprites.Icons.Sheet, sprite, zoom);
+            this.EditButton = new ClickableTextureComponent("edit-delivery", buttonBounds, "junimo", "Edit delivery options", Sprites.Icons.Sheet, sprite, zoom);
             this.EditExitButton = new ClickableTextureComponent(new Rectangle(bounds.Right - 9 * Game1.pixelZoom, bounds.Y - Game1.pixelZoom * 2, Sprites.Icons.ExitButton.Width * Game1.pixelZoom, Sprites.Icons.ExitButton.Height * Game1.pixelZoom), Sprites.Icons.Sheet, Sprites.Icons.ExitButton, Game1.pixelZoom);
             int LabelY = padding + 2 * LabelHeight;
             Rectangle[] sprites = new Rectangle[5]
             {
-                AllArrow,
+                AllArrowSprite,
                 Sprites.Icons.EmptyCheckbox,
-                new Rectangle(202, 374, 8, 8),
-                new Rectangle(202, 374, 8, 8),
-                new Rectangle(202, 374, 8, 8)
+                StarSprite,
+                StarSprite,
+                StarSprite,
             };
-            string[] hover = new string[5] { "Any", "Regular", "Silver", "Gold", "Iridium"};
+            string[] hover = new string[5] {
+                "Any",
+                ItemQuality.Normal.ToString(),
+                ItemQuality.Silver.ToString(),
+                ItemQuality.Gold.ToString(),
+                ItemQuality.Iridium.ToString(),
+            };
             for (int i = 0; i < 5; i++)
             {
                 this.SendStars[i] = new ClickableTextureComponent(
@@ -247,12 +275,12 @@ namespace DeliveryService.Menus.Overlays
         }
         protected void SaveEdit()
         {
-            bool[] send = new bool[this.SendCategories.Count];
-            bool[] receive = new bool[this.ReceiveCategories.Count];
+            int[] send = new int[this.SendCategories.Count];
+            int[] receive = new int[this.ReceiveCategories.Count];
             for (int i = 0; i < this.SendCategories.Count; i++)
             {
-                send[i] = this.SendCategories[i].Checkbox[0].Value;
-                receive[i] = this.ReceiveCategories[i].Checkbox[0].Value;
+                send[i] = this.SendCategories[i].GetValue();
+                receive[i] = this.ReceiveCategories[i].GetValue();
             }
             Monitor.Log($"Saving Categories {this.Chest.Location} Send:{string.Join(", ", send)}, Receive:{string.Join(", ", receive)}", LogLevel.Trace);
             this.Chest.DeliveryOptions.Set(send, receive, MatchColor.Value);
@@ -264,14 +292,11 @@ namespace DeliveryService.Menus.Overlays
             this.hasDelivery = false;
             for (int i = 0; i < this.SendCategories.Count; i++)
             {
-                this.hasDelivery = false;
-                for (int j = 0; j < this.SendCategories[i].Checkbox.Length; j++)
-                {
-                    this.SendCategories[i].Checkbox[j].Value = this.Chest.DeliveryOptions.Send[i];
-                    this.ReceiveCategories[i].Checkbox[j].Value = this.Chest.DeliveryOptions.Receive[i];
-                    if (this.Chest.DeliveryOptions.Send[i] || this.Chest.DeliveryOptions.Send[i])
-                        this.hasDelivery = true;
-                }
+                if (this.Chest.DeliveryOptions.Send[i] == 0 && this.Chest.DeliveryOptions.Receive[i] == 0)
+                    continue;
+                this.hasDelivery = true;
+                this.SendCategories[i].SetValue(this.Chest.DeliveryOptions.Send[i]);
+                this.ReceiveCategories[i].SetValue(this.Chest.DeliveryOptions.Receive[i]);
             }
             this.MatchColor.Value = this.Chest.DeliveryOptions.MatchColor;
         }
@@ -291,7 +316,6 @@ namespace DeliveryService.Menus.Overlays
             {
                 return false;
             }
-            this.Monitor.Log($"Clicked @{x},{y}", LogLevel.Debug);
             if (!isEditing)
             {
                 if (this.EditButton.containsPoint(x, y))
@@ -299,22 +323,19 @@ namespace DeliveryService.Menus.Overlays
                     OpenEditMenu();
                     return true;
                 }
+                return false;
             } else
             {
                 // save button
                 if (this.EditSaveButtonArea.containsPoint(x, y))
                 {
                     SaveEdit();
-                    ResetEdit();
-                    this.scrollbar.Hide();
-                    this.isEditing = false;
+                    CloseEditMenu();
                     return true;
                 }
                 else if (this.EditExitButton.containsPoint(x, y))
                 {
-                    this.scrollbar.Hide();
-                    this.isEditing = false;
-                    ResetEdit();
+                    CloseEditMenu();
                     return true;
                 }
                 else if (this.MatchColor.GetBounds().Contains(x,y))
@@ -361,49 +382,8 @@ namespace DeliveryService.Menus.Overlays
                         }
                     }
                 }
-                /*
-                 *else if (this.PickupAll.GetBounds().Contains(x, y) || this.DropoffAll.GetBounds().Contains(x, y)) {
-                                    bool pickup = this.PickupAll.GetBounds().Contains(x, y);
-                                    List<Category> primary = pickup ? this.SendCategories : this.ReceiveCategories;
-                                    List<Category> secondary = pickup ? this.ReceiveCategories : this.SendCategories;
-                                    bool all = primary.All(i => i.Checkbox.Value);
-                                    for (int i = 0; i < this.SendCategories.Count; i++)
-                                    {
-                                        if (! all)
-                                        {
-                                            primary[i].Checkbox.Value = true;
-                                            secondary[i].Checkbox.Value = false;
-                                        } else
-                                        {
-                                            primary[i].Checkbox.Value = false;
-                                        }
-                                    }
-                                }
-                                for (int i = 0; i < this.SendCategories.Count; i++)
-                                {
-                                    if (this.SendCategories[i].Checkbox.GetBounds().Contains(x, y))
-                                    {
-                                        this.SendCategories[i].Checkbox.Toggle();
-                                        if(this.SendCategories[i].Checkbox.Value)
-                                        {
-                                            this.ReceiveCategories[i].Checkbox.Value = false;
-                                        }
-                                        break;
-                                    }
-                                    if (this.ReceiveCategories[i].Checkbox.GetBounds().Contains(x, y))
-                                    {
-                                        this.ReceiveCategories[i].Checkbox.Toggle();
-                                        if (this.ReceiveCategories[i].Checkbox.Value)
-                                        {
-                                            this.SendCategories[i].Checkbox.Value = false;
-                                        }
-                                        break;
-                                    }
-                                }
-                  */
                 return true;
             }
-            return false;
         }
         /// <summary>The method invoked when the cursor is hovered.</summary>
         /// <param name="x">The cursor's X position.</param>
@@ -420,21 +400,45 @@ namespace DeliveryService.Menus.Overlays
                 for (int i = 0; i < 5; i++)
                 {
                     if (this.SendStars[i].containsPoint(x, y))
+                    {
                         hoverText = this.SendStars[i].hoverText;
-                    this.SendStars[i].tryHover(x, y);
-                    this.ReceiveStars[i].tryHover(x, y);
+                        this.SendStars[i].tryHover(x, y);
+                        break;
+                    }
+                    if (this.ReceiveStars[i].containsPoint(x, y))
+                    {
+                        hoverText = this.ReceiveStars[i].hoverText;
+                        this.ReceiveStars[i].tryHover(x, y);
+                        break;
+                    }
                 }
+                return true;
             } else
             {
                 this.EditButton.tryHover(x, y);
+                if (this.EditButton.containsPoint(x, y))
+                {
+                    hoverText = this.EditButton.hoverText;
+                    return true;
+                }
                 return false;
             }
-            return true;
         }
         protected void OpenEditMenu()
         {
             isEditing = true;
+            this.Menu.inventory.highlightMethod = item => false;
+            this.Menu.ItemsToGrabMenu.highlightMethod = item => false;
             this.scrollbar.Show();
+        }
+        protected void CloseEditMenu()
+        {
+            ResetEdit();
+            this.scrollbar.Hide();
+            this.isEditing = false;
+            this.Menu.inventory.highlightMethod = origInventoryHighlighter;
+            this.Menu.ItemsToGrabMenu.highlightMethod = origChestHighlighter;
+
         }
         void SetAllCategoryBoxes(List<Category> primary, List<Category> secondary, int idx)
         {
@@ -498,7 +502,7 @@ namespace DeliveryService.Menus.Overlays
             int width = (int)textSize.X + Game1.tileSize / 2;
             int height = Math.Max(60, (int)textSize.Y + Game1.tileSize / 2);
             int x = Game1.getOldMouseX() + Game1.tileSize / 2;
-            int y = Game1.getOldMouseY() - Game1.tileSize / 2;
+            int y = Game1.getOldMouseY() + Game1.tileSize / 2;
             if (x + width > Game1.viewport.Width)
             {
                 x = Game1.viewport.Width - width;

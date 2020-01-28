@@ -46,7 +46,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Framework\ItemQuality.cs" />
     <Compile Include="Framework\ObjectLocation.cs" />
+    <Compile Include="Framework\ScrollBar.cs" />
     <Compile Include="Framework\SerializableChestLocation.cs" />
     <Compile Include="Framework\DeliveryCategories.cs" />
     <Compile Include="Framework\DeliveryOptions.cs" />
