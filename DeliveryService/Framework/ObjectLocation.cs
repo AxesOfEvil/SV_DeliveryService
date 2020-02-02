@@ -21,7 +21,7 @@ namespace DeliveryService.Framework
         {
             string name = "<Unknown>";
             if (Location != null)
-                name = Location.Name;
+                name = Location.NameOrUniqueName;
             return name + "@(" + ((int)TileLocation.X).ToString() + "," + ((int)TileLocation.Y).ToString() + ")";
         }
     }

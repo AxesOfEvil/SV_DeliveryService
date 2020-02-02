@@ -25,7 +25,7 @@ namespace DeliveryService.Framework
             if (chest == null || chest.Location == null)
                 return;
             if (chest.Location.Location != null)
-                Location = chest.Location.Location.Name;
+                Location = chest.Location.Location.NameOrUniqueName;
             X = (int)chest.Location.TileLocation.X;
             Y = (int)chest.Location.TileLocation.Y;
             isFridge = chest.IsFridge();

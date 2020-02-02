@@ -311,7 +311,7 @@ namespace DeliveryService
         {
             foreach (GameLocation location in LocationHelper.GetAccessibleLocations())
             {
-                if (location.Name == message.Location)
+                if (location.NameOrUniqueName == message.Location)
                 {
                     Item item;
                     if (message.isFridge)
