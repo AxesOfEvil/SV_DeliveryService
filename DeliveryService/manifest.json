@@ -7,5 +7,10 @@
   "EntryDll": "DeliveryService.dll",
   "MinimumApiVersion": "3.0.0",
   "UpdateKeys": [ "Nexus:5187"],
-  "Dependencies": []
+  "Dependencies": [
+   {
+      "UniqueID": "Alek.MegaStorage",
+      "IsRequired": false
+   }
+]
 }
